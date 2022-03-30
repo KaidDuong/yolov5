@@ -22,13 +22,75 @@ class Albumentations:
             check_version(A.__version__, '1.0.3', hard=True)  # version requirement
 
             self.transform = A.Compose([
-                A.Blur(p=0.01),
-                A.MedianBlur(p=0.01),
-                A.ToGray(p=0.01),
-                A.CLAHE(p=0.01),
-                A.RandomBrightnessContrast(p=0.0),
-                A.RandomGamma(p=0.0),
-                A.ImageCompression(quality_lower=75, p=0.0)],
+                #blur
+                A.OneOf([
+                    A.Blur(),
+                    A.GaussianBlur(blur_limit=(3, 9), sigma_limit=20.0)
+                    ], p=0.1
+                ),
+                #noise
+                A.OneOf([
+                    A.GaussNoise(),
+                    A.MultiplicativeNoise(),
+                    A.ISONoise()
+                ], p=0.1
+                ),
+                # color
+                A.OneOf([
+                    A.RGBShift(),
+                    A.HueSaurationValue(),
+                    A.ChannelShuffle()
+                ], p=0.1
+                ),
+                # color
+                A.OneOf([
+                    A.RGBShift(),
+                    A.HueSaurationValue(),
+                    A.ChannelShuffle(),
+                    A.ColorJitter()
+                ], p=0.1
+                ),
+                # Environment
+                A.OneOf([
+                    A.CLAHE(),
+                    A.RandomGamma(),
+                    A.RandomBrightnessContrast(),
+                    A.RandomContrast(),
+                    A.RandomBrightness(),
+                ], p=0.1
+                ),
+                A.OneOf([
+                    A.RandomSunFlare(),
+                    A.RandomSnow(),
+                    A.RandomToneCurve(),
+                    A.RandomShadow(),
+                    A.RandomFog(),
+                    A.RandomRain()
+                ], p=0.1
+                ),
+                #
+                A.OneOf([
+                    A.Perspective(),
+                    A.PiecewiseAffine(),
+                    A.Affine(),
+                    A.OpticalDistortion()
+                ], p=0.1
+                ),
+                #
+                A.OneOf([
+                    A.Equalize(),
+                    A.Downscale(),
+                    A.Emboss(),
+                    A.FancyPCA(),
+                    A.Sharpen()
+                ], p=0.1
+                ),
+                # rotate
+                A.SafeRotate(limit=3, p=0.1, border_mode=cv2.BORDER_CONSTANT, value=0),
+                #
+
+                # compress
+                A.ImageCompression(quality_lower=50, p=0.1)],
                 bbox_params=A.BboxParams(format='yolo', label_fields=['class_labels']))
 
             LOGGER.info(colorstr('albumentations: ') + ', '.join(f'{x}' for x in self.transform.transforms if x.p))
@@ -42,6 +104,7 @@ class Albumentations:
             new = self.transform(image=im, bboxes=labels[:, 1:], class_labels=labels[:, 0])  # transformed
             im, labels = new['image'], np.array([[c, *b] for c, b in zip(new['class_labels'], new['bboxes'])])
         return im, labels
+
 
 
 def augment_hsv(im, hgain=0.5, sgain=0.5, vgain=0.5):
